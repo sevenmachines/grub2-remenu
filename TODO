@@ -1,0 +1,1 @@
+* Deal with situation where grub.cfg contains menuentries that we've already renamed
