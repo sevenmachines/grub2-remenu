@@ -11,6 +11,7 @@
 #include <string>
 #include <map>
 #include <list>
+#include <sstream>
 
 namespace remenu {
 
@@ -21,7 +22,7 @@ public:
 	void initialiseConfigKeys();
 		void parseConfig();
 	void parseMenuEntries();
-
+	const std::list<std::string> &  getRawConfig()const;
 	const std::list<std::string>  getEntryValues(const std::string & key)const;
 	const std::list<std::string>  getEntryOptions(const std::string & key)const;
 
@@ -32,6 +33,7 @@ public:
 
 protected:
 	std::string configFile;
+	std::list<std::string>	rawConfig;
 	 std::map<std::string, std::list<std::string> > configKeys;
 
 	 std::map<std::string, std::list<std::string> > configEntries;

@@ -25,5 +25,6 @@ static const std::string GRUBD_SCRIPT_PATH =GRUBD_DIR+GRUBD_SCRIPT_FILE;
 static const std::string GRUB_UPDATE_CMD = "update-grub";
 
 static const std::string GRUB_MENUENTRY_TEXT = "menuentry";
+static const std::string GRUB_DEFAULTS_PATH = "/etc/default/grub";
 
 #endif /* MAINDEFS_H_ */

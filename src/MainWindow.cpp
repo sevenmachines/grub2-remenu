@@ -21,7 +21,7 @@
 namespace remenu {
 
 MainWindow::MainWindow(int argc, char **argv) :
-		configObject(GRUB_CFG_PATH) {
+		configObject(GRUB_CFG_PATH), defaultsObject(GRUB_DEFAULTS_PATH) {
 	Gtk::Main kit(argc, argv);
 
 	builder = Gtk::Builder::create();
@@ -43,6 +43,8 @@ MainWindow::MainWindow(int argc, char **argv) :
 	}
 
 	configObject = GrubConfigObject(GRUB_CFG_PATH);
+	this->generateMenuEntries();
+
 }
 
 MainWindow::~MainWindow() {
@@ -54,7 +56,15 @@ bool MainWindow::initialise() {
 	// get pointers to all the widgets we need from the builder
 	builder->get_widget("main_window", main_window);
 	builder->get_widget("menuentry_vbox", menuentry_vbox);
+	builder->get_widget("defaults_vbox", defaults_vbox);
 	builder->get_widget("refresh_button", refresh_button);
+	builder->get_widget("grub_textview", grub_textview);
+	builder->get_widget("script_textview", script_textview);
+
+	grub_textbuffer = Gtk::TextBuffer::create();
+	script_textbuffer = Gtk::TextBuffer::create();
+	script_textview->set_buffer(script_textbuffer);
+	grub_textview->set_buffer(grub_textbuffer);
 
 	main_window->override_background_color(Gdk::RGBA("black"));
 	// connect up widget signals
@@ -71,8 +81,29 @@ void MainWindow::on_refresh_button_clicked() {
 #ifdef DEBUG_MAINWINDOW
 	std::cout << "MainWindow::on_refresh_button_clicked" << std::endl;
 #endif
-	this->generateGrubScript();
+	// refresh script object from edited entries
+	// forall in menuEntries
+	{
+		std::map<std::string, MenuEntry *>::const_iterator it_menuEntries = menuEntries.begin();
+		const std::map<std::string, MenuEntry *>::const_iterator it_menuEntries_end = menuEntries.end();
+		while (it_menuEntries != it_menuEntries_end) {
+			if (it_menuEntries->second->isEnabled()) {
+				scriptObject.setRenameMenu(it_menuEntries->second->getCurrentEntry(),
+						it_menuEntries->second->getNewEntry());
+			}
+			++it_menuEntries;
+		}
+	}
+	scriptObject.generateGrubScript();
 	this->updateGrub();
+	this->updateScriptViewText();
+	this->clearAllMenuEntries();
+
+	configObject.parseConfig();
+	defaultsObject.parseConfig();
+
+	this->updateDefaultsView();
+	this->updateGrubViewText();
 	this->generateMenuEntries();
 }
 
@@ -82,8 +113,7 @@ bool MainWindow::generateMenuEntries() {
 #endif
 	// get each lie from grub.cfg and scan through for menu entries
 	// creating a MenuEntry from each one
-	this->clearAllMenuEntries();
-	configObject.parseConfig();
+
 	const std::list<std::string> & entry_vals = configObject.getEntryValues(GRUB_MENUENTRY_TEXT);
 	// forall in entry_vals
 	{
@@ -91,14 +121,19 @@ bool MainWindow::generateMenuEntries() {
 		const std::list<std::string>::const_iterator it_entry_vals_end = entry_vals.end();
 		while (it_entry_vals != it_entry_vals_end) {
 			// Search current script for entry
-			std::pair<std::string, std::string> current_script_entry = scriptObject.getRenameMenu(*it_entry_vals);
+			std::pair<std::string, std::string> current_script_entry = scriptObject.getReverseRenameMenu(
+					*it_entry_vals);
+			std::cout << "MainWindow::generateMenuEntries: DEBUG: " << "Searched for " << *it_entry_vals << ", found ("
+					<< current_script_entry.first << ", " << current_script_entry.second << ")" << std::endl;
 			if (current_script_entry.first == "") {
-				this->addMenuEntry(*it_entry_vals, *it_entry_vals, false);
+				MenuEntry & new_me = this->addMenuEntry(*it_entry_vals, *it_entry_vals, false);
+				// wasnt in script so mustnt have been activated previously
+				new_me.setEnabled(false);
 			} else {
 				// switch first menu entry val to undo a current renaming
-				this->addMenuEntry(current_script_entry.first, current_script_entry.second, true);
+				MenuEntry & new_me = this->addMenuEntry(current_script_entry.first, current_script_entry.second, true);
 				// and set MenuEntry to activated if found
-
+				new_me.setEnabled(true);
 			}
 			++it_entry_vals;
 		}
@@ -107,34 +142,7 @@ bool MainWindow::generateMenuEntries() {
 	return true;
 }
 
-bool MainWindow::generateGrubScript() {
-#ifdef 	DEBUG_MAINWINDOW
-	std::cout << "MainWindow::generateGrubScript: " << "" << std::endl;
-#endif
-	// generate script thatll do the job of renaming
-	std::ofstream ofs;
-	ofs.open(GRUBD_SCRIPT_PATH.c_str());
-	if (ofs.is_open()) {
-#ifdef 	DEBUG_MAINWINDOW
-		std::cout << "MainWindow::generateGrubScript: " << GRUBD_SCRIPT_PATH.c_str() << std::endl;
-		std::cout << "MainWindow::generateGrubScript: " << scriptObject.getFullRenameScript() << std::endl;
-#endif
-		ofs << scriptObject.getFullRenameScript();
-		ofs.close();
-		this->setFilePermissions(GRUBD_SCRIPT_PATH);
-	} else {
-		std::cout << "MainWindow::generateGrubScript: " << "Error opening file " << GRUBD_SCRIPT_PATH << std::endl;
-		std::cout << std::endl;
-		std::cout << scriptObject.getFullRenameScript() << std::endl;
-		std::cout << std::endl;
-	}
-
-//	/int update_success = system(GRUB_UPDATE_CMD.c_str());
-	return true;
-}
-
 void MainWindow::clearAllMenuEntries() {
-	scriptObject.clear();
 	// forall in menuEntries
 	{
 		std::map<std::string, MenuEntry *>::const_iterator it_menuEntries = menuEntries.begin();
@@ -159,12 +167,38 @@ void MainWindow::deleteMenuEntry(MenuEntry * menu_entry) {
 	}
 }
 
-void MainWindow::addMenuEntry(std::string entry1, std::string entry2, bool activated) {
+MenuEntry & MainWindow::addMenuEntry(std::string entry1, std::string entry2, bool activated) {
 
 	MenuEntry * me = new MenuEntry(entry1, entry2, activated);
 	menuEntries[entry1] = me;
 	menuentry_vbox->add(*me);
 	scriptObject.setRenameMenu(entry1, entry2);
+	return *me;
+}
+
+void MainWindow::clearAllDefaultsEntries() {
+	// forall in defaultsEntries
+	{
+		std::map<std::string, DefaultsEntry *>::iterator it_defaultsEntries = defaultsEntries.begin();
+		const std::map<std::string, DefaultsEntry *>::const_iterator it_defaultsEntries_end = defaultsEntries.end();
+		while (it_defaultsEntries != it_defaultsEntries_end) {
+			defaults_vbox->remove(*(it_defaultsEntries->second));
+			delete (it_defaultsEntries->second);
+			++it_defaultsEntries;
+		}
+	}
+
+
+
+	defaultsEntries.clear();
+}
+
+DefaultsEntry & MainWindow::addDefaultsEntry(std::string entry1, std::string entry2, bool activated) {
+
+	DefaultsEntry * de = new DefaultsEntry(entry1, entry2, activated);
+	defaultsEntries[entry1] = de;
+	defaults_vbox->add(*de);
+	return *de;
 }
 
 bool MainWindow::updateGrub() {
@@ -176,15 +210,52 @@ bool MainWindow::updateGrub() {
 	return false;
 }
 
-void MainWindow::setFilePermissions(const std::string file, int perms) {
-	if (perms == 0) {
-		perms = S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IROTH;
+void MainWindow::updateGrubViewText() {
+	std::stringstream ss;
+	const std::list<std::string> & rawtext = configObject.getRawConfig();
+	// forall in rawtext
+	{
+		std::list<std::string>::const_iterator it_rawtext = rawtext.begin();
+		const std::list<std::string>::const_iterator it_rawtext_end = rawtext.end();
+		while (it_rawtext != it_rawtext_end) {
+			ss << *it_rawtext << std::endl;
+			++it_rawtext;
+		}
 	}
-	int code = chmod(file.c_str(), perms);
-	if (code != 0) {
-		std::cout << "MainWindow::setFilePermissions: " << "Error setting file permissions on " << file << " (" << perms
-				<< ")" << " Errcode: " << code << std::endl;
+	grub_textbuffer->set_text(ss.str());
+}
+
+void MainWindow::updateScriptViewText() {
+	std::stringstream ss;
+	const std::list<std::string> & rawtext = scriptObject.getRawScript();
+	// forall in rawtext
+	{
+		std::list<std::string>::const_iterator it_rawtext = rawtext.begin();
+		const std::list<std::string>::const_iterator it_rawtext_end = rawtext.end();
+		while (it_rawtext != it_rawtext_end) {
+			ss << *it_rawtext << std::endl;
+			++it_rawtext;
+		}
 	}
+	script_textbuffer->set_text(ss.str());
+}
+
+void MainWindow::updateDefaultsView() {
+	this->clearAllDefaultsEntries();
+	const std::map<std::string, std::string> & varmap = defaultsObject.getVariableMap();
+	// forall in varmap
+	{
+		std::map<std::string, std::string>::const_iterator it_varmap = varmap.begin();
+		const std::map<std::string, std::string>::const_iterator it_varmap_end = varmap.end();
+		while (it_varmap != it_varmap_end) {
+			DefaultsEntry * de = new DefaultsEntry(it_varmap->first, it_varmap->second, true);
+			defaultsEntries[it_varmap->first]= de;
+			defaults_vbox->pack_start(*de);
+			++it_varmap;
+		}
+	}
+	defaults_vbox->show_all();
+
 }
 
 } /* namespace remenu */

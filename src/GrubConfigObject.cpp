@@ -18,7 +18,7 @@ GrubConfigObject::GrubConfigObject(const std::string config_file) :
 	this->initialiseConfigKeys();
 #ifdef DEBUG_GRUBCONFIGOBJECT
 	std::cout << "GrubConfigObject::GrubConfigObject: " << "DEBUG: configFile: " << configFile << " configKeys: "
-			<< configKeys.size() << std::endl;
+	<< configKeys.size() << std::endl;
 #endif
 }
 
@@ -32,14 +32,17 @@ void GrubConfigObject::initialiseConfigKeys() {
 
 void GrubConfigObject::parseConfig() {
 	std::ifstream ifs;
+	rawConfig.clear();
+
 	ifs.open(configFile.c_str());
 	if (ifs.is_open()) {
-
 		std::string line;
 		this->initialiseConfigKeys();
 		while (getline(ifs, line)) {
 			// forall in configKeys
 			{
+				rawConfig.push_back(line);
+
 				std::list<std::string> key_lines;
 				std::map<std::string, std::list<std::string> >::iterator it_configKeys = configKeys.begin();
 				const std::map<std::string, std::list<std::string> >::const_iterator it_configKeys_end =
@@ -49,8 +52,8 @@ void GrubConfigObject::parseConfig() {
 					if (found != std::string::npos) {
 #ifdef DEBUG_GRUBCONFIGOBJECT
 						std::cout << "GrubConfigObject::parseConfig: " << "DEBUG: configKeys[" << it_configKeys->first
-								<< "]: " << it_configKeys->second.size() << " added " << "'" << line << "'"
-								<< std::endl;
+						<< "]: " << it_configKeys->second.size() << " added " << "'" << line << "'"
+						<< std::endl;
 #endif
 						it_configKeys->second.push_back(line);
 					}
@@ -58,12 +61,10 @@ void GrubConfigObject::parseConfig() {
 				}
 			}
 		}
-		ifs.close();
 	} else {
 		std::cout << "GrubConfigObject::parseConfig: " << "ERROR opening file: " << configFile << std::endl;
 	}
-
-	// now parse the raw lines
+	//now parse the raw lines
 	this->parseMenuEntries();
 }
 
@@ -115,6 +116,9 @@ void GrubConfigObject::parseMenuEntries() {
 
 }
 
+const std::list<std::string> &   GrubConfigObject::getRawConfig() const {
+	return rawConfig;
+}
 const std::list<std::string> GrubConfigObject::getKeyRawLines(const std::string & key) const {
 	return (this->getMapValuesByKey(configKeys, key));
 }
