@@ -11,6 +11,7 @@
 #include "MenuEntry.h"
 #include "MainDefs.h"
 #include "GrubConfigObject.h"
+#include "GrubScriptObject.h"
 #include <gtkmm/window.h>
 #include <gtkmm/builder.h>
 #include <gtkmm/box.h>
@@ -31,6 +32,7 @@ protected:
 	Gtk::Button * refresh_button;
 	std::map<std::string, MenuEntry *> menuEntries;
 	GrubConfigObject configObject;
+	GrubScriptObject scriptObject;
 
 	void on_refresh_button_clicked();
 	bool generateMenuEntries();
@@ -38,11 +40,11 @@ protected:
 
 	bool initialise();
 
-	void addMenuEntry(std::string entry);
+	void addMenuEntry(std::string entry1, std::string entry2, bool activated);
 	void deleteMenuEntry(MenuEntry * menu_entry);
 	void clearAllMenuEntries();
-	GError * runCommandAsRoot(const std::string & cmd_str);
-	std::string getScriptCommands() const ;
+	bool updateGrub();
+	std::string getScriptCommands() const;
 	void setFilePermissions(const std::string file, int perms = 0);
 
 };

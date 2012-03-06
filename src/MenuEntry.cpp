@@ -9,11 +9,13 @@
 
 namespace remenu {
 
-MenuEntry::MenuEntry(std::string current_ent, std::string new_ent, bool enable) {
+MenuEntry::MenuEntry(std::string current_ent, std::string new_ent, bool enable) : HBox(false,0){
 	currentEntryText = new Gtk::Entry();
 	newEntryText = new Gtk::Entry();
 	enabledCheckBox = new Gtk::CheckButton();
 
+	currentEntryText->set_editable(false);
+	this->
 	enabledCheckBox->signal_clicked().connect(sigc::mem_fun(*this, &MenuEntry::on_enabledCheckBox_clicked));
 
 	this->setCurrentEntry(current_ent);
@@ -22,7 +24,7 @@ MenuEntry::MenuEntry(std::string current_ent, std::string new_ent, bool enable) 
 
 	this->pack_start(*currentEntryText);
 	this->pack_start(*newEntryText);
-	this->pack_start(*enabledCheckBox);
+	this->pack_end(*enabledCheckBox, Gtk::PACK_SHRINK);
 	this->show();
 
 }

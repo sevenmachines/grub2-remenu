@@ -5,7 +5,7 @@
  *      Author: niall
  */
 
-#define DEBUG_MAINWINDOW
+//#define DEBUG_MAINWINDOW
 #include "MainWindow.h"
 #include "MainDefs.h"
 #include <gtkmm.h>
@@ -71,7 +71,7 @@ void MainWindow::on_refresh_button_clicked() {
 	std::cout << "MainWindow::on_refresh_button_clicked" << std::endl;
 #endif
 	this->generateGrubScript();
-	this->runCommandAsRoot("update-grub");
+	this->updateGrub();
 	this->generateMenuEntries();
 }
 
@@ -89,7 +89,16 @@ bool MainWindow::generateMenuEntries() {
 		std::list<std::string>::const_iterator it_entry_vals = entry_vals.begin();
 		const std::list<std::string>::const_iterator it_entry_vals_end = entry_vals.end();
 		while (it_entry_vals != it_entry_vals_end) {
-			this->addMenuEntry(*it_entry_vals);
+			// Search current script for entry
+			std::pair<std::string, std::string> current_script_entry = scriptObject.getRenameMenu(*it_entry_vals);
+			if (current_script_entry.first == "") {
+				this->addMenuEntry(*it_entry_vals, *it_entry_vals, false);
+			} else {
+				// switch first menu entry val to undo a current renaming
+				this->addMenuEntry(current_script_entry.first, current_script_entry.second, true);
+				// and set MenuEntry to activated if found
+
+			}
 			++it_entry_vals;
 		}
 	}
@@ -102,17 +111,19 @@ bool MainWindow::generateGrubScript() {
 	std::cout << "MainWindow::generateGrubScript: " << "" << std::endl;
 #endif
 	// generate script thatll do the job of renaming
-	std::string cmds = this->getScriptCommands();
 	std::ofstream ofs;
 	ofs.open(GRUBD_SCRIPT_PATH.c_str());
 	if (ofs.is_open()) {
-		std::cout<<"MainWindow::generateGrubScript: "<<GRUBD_SCRIPT_PATH.c_str()<<std::endl;
-		std::cout<<"MainWindow::generateGrubScript: "<<cmds<<std::endl;
-		ofs << cmds;
+		std::cout << "MainWindow::generateGrubScript: " << GRUBD_SCRIPT_PATH.c_str() << std::endl;
+		std::cout << "MainWindow::generateGrubScript: " << scriptObject.getFullRenameScript() << std::endl;
+		ofs << scriptObject.getFullRenameScript();
 		ofs.close();
 		this->setFilePermissions(GRUBD_SCRIPT_PATH);
 	} else {
 		std::cout << "MainWindow::generateGrubScript: " << "Error opening file " << GRUBD_SCRIPT_PATH << std::endl;
+		std::cout << std::endl;
+		std::cout << scriptObject.getFullRenameScript() << std::endl;
+		std::cout << std::endl;
 	}
 
 //	/int update_success = system(GRUB_UPDATE_CMD.c_str());
@@ -120,15 +131,15 @@ bool MainWindow::generateGrubScript() {
 }
 
 void MainWindow::clearAllMenuEntries() {
-	// create copy for deletion
-	std::map<std::string, MenuEntry *> delete_entries(menuEntries.begin(), menuEntries.end());
-	// forall in delete_entries
+	scriptObject.clear();
+	// forall in menuEntries
 	{
-		std::map<std::string, MenuEntry *>::const_iterator it_delete_entries = delete_entries.begin();
-		const std::map<std::string, MenuEntry *>::const_iterator it_delete_entries_end = delete_entries.end();
-		while (it_delete_entries != it_delete_entries_end) {
-			deleteMenuEntry(it_delete_entries->second);
-			++it_delete_entries;
+		std::map<std::string, MenuEntry *>::const_iterator it_menuEntries = menuEntries.begin();
+		const std::map<std::string, MenuEntry *>::const_iterator it_menuEntries_end = menuEntries.end();
+		while (it_menuEntries != it_menuEntries_end) {
+			menuentry_vbox->remove(*(it_menuEntries->second));
+
+			++it_menuEntries;
 		}
 	}
 	menuEntries.clear();
@@ -136,47 +147,30 @@ void MainWindow::clearAllMenuEntries() {
 
 void MainWindow::deleteMenuEntry(MenuEntry * menu_entry) {
 	if (menu_entry != 0) {
+		scriptObject.clearRenameMenu(menu_entry->getCurrentEntry());
 		menuEntries.erase(menu_entry->getCurrentEntry());
 		menuentry_vbox->remove(*(menu_entry));
 		delete (menu_entry);
 		(menu_entry) = 0;
+		scriptObject.clearRenameMenu(menu_entry->getCurrentEntry());
 	}
 }
 
-void MainWindow::addMenuEntry(std::string entry) {
+void MainWindow::addMenuEntry(std::string entry1, std::string entry2, bool activated) {
 
-	MenuEntry * me = new MenuEntry(entry, entry, false);
-	menuEntries[entry] = me;
+	MenuEntry * me = new MenuEntry(entry1, entry2, activated);
+	menuEntries[entry1] = me;
 	menuentry_vbox->add(*me);
+	scriptObject.setRenameMenu(entry1, entry2);
 }
 
-GError * MainWindow::runCommandAsRoot(const std::string & cmd_str) {
-	std::vector<char> chars(cmd_str.begin(), cmd_str.end());
-	GError * gerr;
-	gchar * cmd_line = &chars[0];
-	gksu_run(cmd_line, &gerr);
-	return gerr;
-}
+bool MainWindow::updateGrub() {
+	int success = system("update-grub");
 
-std::string MainWindow::getScriptCommands() const {
-	// generate script thatll do the job of renaming
-	std::stringstream ss;
-	ss << "#!/bin/sh " << std::endl;
-	ss << "echo \"Renaming entries....\" >&2 " << std::endl;
-
-	// forall in menuEntries
-	{
-		std::map<std::string, MenuEntry *>::const_iterator it_menuEntries = menuEntries.begin();
-		const std::map<std::string, MenuEntry *>::const_iterator it_menuEntries_end = menuEntries.end();
-		while (it_menuEntries != it_menuEntries_end) {
-			if ((it_menuEntries->second)->isEnabled()) {
-				ss << "sed -i 's|" << (it_menuEntries->second)->getCurrentEntry() << "|"
-						<< (it_menuEntries->second)->getNewEntry() << "|g' " << GRUB_CFG_TMP_PATH << ";" << std::endl;
-			}
-			++it_menuEntries;
-		}
+	if (success == 0){
+		return true;
 	}
-	return ss.str();
+	return false;
 }
 
 void MainWindow::setFilePermissions(const std::string file, int perms) {
@@ -186,7 +180,7 @@ void MainWindow::setFilePermissions(const std::string file, int perms) {
 	int code = chmod(file.c_str(), perms);
 	if (code != 0) {
 		std::cout << "MainWindow::setFilePermissions: " << "Error setting file permissions on " << file << " (" << perms
-				<< ")"<< " Errcode: "<<code<< std::endl;
+				<< ")" << " Errcode: " << code << std::endl;
 	}
 }
 

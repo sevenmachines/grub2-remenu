@@ -5,7 +5,7 @@
  *      Author: niall
  */
 
-#define DEBUG_GRUBCONFIGOBJECT
+//#define DEBUG_GRUBCONFIGOBJECT
 #include "GrubConfigObject.h"
 #include "MainDefs.h"
 #include <iostream>
