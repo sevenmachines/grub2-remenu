@@ -93,7 +93,6 @@ void GrubConfigObject::parseMenuEntries() {
 						first_quote = it_lines->find_first_of("\"");
 						second_quote = it_lines->find("\"", first_quote + 1);
 					}
-					std::cout << first_quote << ":" << second_quote << std::endl;
 					entry = it_lines->substr(first_quote + 1, second_quote - first_quote - 1);
 #ifdef DEBUG_GRUBCONFIGOBJECT
 					std::cout << "GrubConfigObject::parseMenuEntries: " << "DEBUG: Found entry: " << entry << std::endl;

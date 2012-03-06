@@ -20,11 +20,11 @@ GrubScriptObject::~GrubScriptObject() {
 }
 
 std::pair<std::string, std::string> GrubScriptObject::getRenameMenu(const std::string obj1) {
-	return this->getRename(obj1, menuRenames);
+	return this->getRename(obj1, this->menuRenames);
 }
 
 void GrubScriptObject::setRenameMenu(const std::string obj1, const std::string obj2) {
-	this->setRename(obj1, obj2, menuRenames);
+	this->setRename(obj1, obj2, this->menuRenames);
 }
 
 bool GrubScriptObject::clearRenameMenu(const std::string obj1) {
@@ -43,26 +43,28 @@ bool GrubScriptObject::clearRenameMisc(const std::string obj1) {
 	return this->clearRename(obj1, miscRenames);
 }
 
-std::pair<std::string, std::string> GrubScriptObject::getRename(const std::string obj1, std::map<std::string, std::string> & map) {
+std::pair<std::string, std::string> GrubScriptObject::getRename(const std::string obj1,
+		std::map<std::string, std::string> & map) {
 	std::pair<std::string, std::string> found_str("", "");
 	std::map<std::string, std::string>::const_iterator it_found = map.find(obj1);
-	if (it_found!=map.end()){
-		found_str.first=it_found->first;
-		found_str.second=it_found->second;
+	if (it_found != map.end()) {
+		found_str.first = it_found->first;
+		found_str.second = it_found->second;
 	}
 	return found_str;
 }
 
 void GrubScriptObject::setRename(const std::string obj1, const std::string obj2,
 		std::map<std::string, std::string> & map) {
+	map[obj1] = obj2;
 }
 
 bool GrubScriptObject::clearRename(const std::string obj1, std::map<std::string, std::string> & map) {
 	std::map<std::string, std::string>::iterator it_found = map.find(obj1);
-	bool is_found=false;
-	if (it_found!=map.end()){
+	bool is_found = false;
+	if (it_found != map.end()) {
 		map.erase(it_found);
-		is_found=true;
+		is_found = true;
 	}
 	return is_found;
 }
@@ -108,7 +110,7 @@ std::string GrubScriptObject::getRenameScript(const std::map<std::string, std::s
 	return ss.str();
 }
 
-void GrubScriptObject::clear(){
+void GrubScriptObject::clear() {
 	menuRenames.clear();
 	miscRenames.clear();
 }

@@ -56,6 +56,7 @@ bool MainWindow::initialise() {
 	builder->get_widget("menuentry_vbox", menuentry_vbox);
 	builder->get_widget("refresh_button", refresh_button);
 
+	main_window->override_background_color(Gdk::RGBA("black"));
 	// connect up widget signals
 	refresh_button->signal_clicked().connect(sigc::mem_fun(*this, &MainWindow::on_refresh_button_clicked));
 
@@ -114,8 +115,10 @@ bool MainWindow::generateGrubScript() {
 	std::ofstream ofs;
 	ofs.open(GRUBD_SCRIPT_PATH.c_str());
 	if (ofs.is_open()) {
+#ifdef 	DEBUG_MAINWINDOW
 		std::cout << "MainWindow::generateGrubScript: " << GRUBD_SCRIPT_PATH.c_str() << std::endl;
 		std::cout << "MainWindow::generateGrubScript: " << scriptObject.getFullRenameScript() << std::endl;
+#endif
 		ofs << scriptObject.getFullRenameScript();
 		ofs.close();
 		this->setFilePermissions(GRUBD_SCRIPT_PATH);
@@ -167,7 +170,7 @@ void MainWindow::addMenuEntry(std::string entry1, std::string entry2, bool activ
 bool MainWindow::updateGrub() {
 	int success = system("update-grub");
 
-	if (success == 0){
+	if (success == 0) {
 		return true;
 	}
 	return false;
