@@ -8,23 +8,16 @@
 #ifndef DEFAULTSENTRY_H_
 #define DEFAULTSENTRY_H_
 
-#include <gtkmm/box.h>
-#include <gtkmm/checkbutton.h>
-#include <gtkmm/entry.h>
+#include "GenericEntry.h"
 
 namespace remenu {
 
-class DefaultsEntry: public Gtk::HBox {
+class DefaultsEntry : public GenericEntry{
 public:
 	DefaultsEntry(const std::string & key, const std::string & val, const bool activate);
 	virtual ~DefaultsEntry();
 protected:
-	Gtk::Entry * keyEntry;
-	Gtk::Entry * valEntry;
-	Gtk::CheckButton * applyButton;
-
-	void on_applyButton_clicked();
-
+	virtual  void on_enableCheckButton_clicked();
 };
 
 } /* namespace remenu */

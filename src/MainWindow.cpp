@@ -88,8 +88,8 @@ void MainWindow::on_refresh_button_clicked() {
 		const std::map<std::string, MenuEntry *>::const_iterator it_menuEntries_end = menuEntries.end();
 		while (it_menuEntries != it_menuEntries_end) {
 			if (it_menuEntries->second->isEnabled()) {
-				scriptObject.setRenameMenu(it_menuEntries->second->getCurrentEntry(),
-						it_menuEntries->second->getNewEntry());
+				scriptObject.setRenameMenu(it_menuEntries->second->getKeyEntryText(),
+						it_menuEntries->second->getValueEntryText());
 			}
 			++it_menuEntries;
 		}
@@ -158,12 +158,12 @@ void MainWindow::clearAllMenuEntries() {
 
 void MainWindow::deleteMenuEntry(MenuEntry * menu_entry) {
 	if (menu_entry != 0) {
-		scriptObject.clearRenameMenu(menu_entry->getCurrentEntry());
-		menuEntries.erase(menu_entry->getCurrentEntry());
+		scriptObject.clearRenameMenu(menu_entry->getKeyEntryText());
+		menuEntries.erase(menu_entry->getKeyEntryText());
 		menuentry_vbox->remove(*(menu_entry));
 		delete (menu_entry);
 		(menu_entry) = 0;
-		scriptObject.clearRenameMenu(menu_entry->getCurrentEntry());
+		scriptObject.clearRenameMenu(menu_entry->getKeyEntryText());
 	}
 }
 

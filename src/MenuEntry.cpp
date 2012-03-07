@@ -6,56 +6,23 @@
  */
 
 #include "MenuEntry.h"
+#include <iostream>
 
 namespace remenu {
 
-MenuEntry::MenuEntry(std::string current_ent, std::string new_ent, bool enable) : HBox(false,0){
-	currentEntryText = new Gtk::Entry();
-	newEntryText = new Gtk::Entry();
-	enabledCheckBox = new Gtk::CheckButton();
-
-	currentEntryText->set_editable(false);
-	this->
-	enabledCheckBox->signal_clicked().connect(sigc::mem_fun(*this, &MenuEntry::on_enabledCheckBox_clicked));
-
-	this->setCurrentEntry(current_ent);
-	this->setNewEntry(new_ent);
-	this->setEnabled(enable);
-
-	this->pack_start(*currentEntryText);
-	this->pack_start(*newEntryText);
-	this->pack_end(*enabledCheckBox, Gtk::PACK_SHRINK);
-	this->show();
-
+MenuEntry::MenuEntry() :
+		GenericEntry() {
+}
+MenuEntry::MenuEntry(std::string key, std::string val, bool activate) :
+		GenericEntry(key, val, activate) {
 }
 
 MenuEntry::~MenuEntry() {
 	// TODO Auto-generated destructor stub
 }
 
-std::string MenuEntry::getCurrentEntry() const {
-	return currentEntryText->get_text();
-}
-std::string MenuEntry::getNewEntry() const {
-	return newEntryText->get_text();
-}
-
-bool MenuEntry::isEnabled() const {
-	return enabledCheckBox->get_active();
-}
-
-void MenuEntry::setCurrentEntry(std::string s) {
-	currentEntryText->set_text(s);
-}
-void MenuEntry::setNewEntry(std::string s) {
-	newEntryText->set_text(s);
-}
-void MenuEntry::setEnabled(bool b) {
-	enabledCheckBox->set_active(b);
-}
-
-void MenuEntry::on_enabledCheckBox_clicked(){
-	this->setEnabled(enabledCheckBox->get_active());
+void MenuEntry::on_enabledCheckBox_clicked() {
+	std::cout << "MenuEntry::on_enabledCheckBox_clicked: " << "" << std::endl;
 }
 
 } /* namespace remenu */
