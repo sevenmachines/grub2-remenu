@@ -21,7 +21,7 @@
 namespace remenu {
 
 MainWindow::MainWindow(int argc, char **argv) :
-		configObject(GRUB_CFG_PATH), defaultsObject(GRUB_DEFAULTS_PATH) {
+		configObject(GRUB_CFG_PATH), defaultsObject(GRUB_DEFAULTS_PATH), scriptObject(GRUBD_SCRIPT_PATH) {
 	Gtk::Main kit(argc, argv);
 
 	builder = Gtk::Builder::create();
@@ -42,7 +42,7 @@ MainWindow::MainWindow(int argc, char **argv) :
 		std::cerr << "BuilderError: " << ex.what() << std::endl;
 	}
 
-	configObject = GrubConfigObject(GRUB_CFG_PATH);
+
 	this->generateMenuEntries();
 
 }
@@ -74,6 +74,16 @@ bool MainWindow::initialise() {
 
 	success = success && this->generateMenuEntries();
 	main_window->show();
+
+	// refresh all the views
+	this->updateScriptViewText();
+
+	configObject.parseConfig();
+	defaultsObject.parseConfig();
+	this->updateDefaultsView();
+	this->updateGrubViewText();
+	this->generateMenuEntries();
+
 	return success;
 }
 
@@ -81,6 +91,9 @@ void MainWindow::on_refresh_button_clicked() {
 #ifdef DEBUG_MAINWINDOW
 	std::cout << "MainWindow::on_refresh_button_clicked" << std::endl;
 #endif
+
+	scriptObject.clear();
+
 	// refresh script object from edited entries
 	// forall in menuEntries
 	{
@@ -88,7 +101,7 @@ void MainWindow::on_refresh_button_clicked() {
 		const std::map<std::string, MenuEntry *>::const_iterator it_menuEntries_end = menuEntries.end();
 		while (it_menuEntries != it_menuEntries_end) {
 			if (it_menuEntries->second->isEnabled()) {
-				scriptObject.setRenameMenu(it_menuEntries->second->getKeyEntryText(),
+				scriptObject.setRename(it_menuEntries->second->getKeyEntryText(),
 						it_menuEntries->second->getValueEntryText());
 			}
 			++it_menuEntries;
@@ -108,9 +121,6 @@ void MainWindow::on_refresh_button_clicked() {
 }
 
 bool MainWindow::generateMenuEntries() {
-#ifdef DEBUG_MAINWINDOW
-	std::cout << "MainWindow::generateMenuEntries: " << "" << std::endl;
-#endif
 	// get each lie from grub.cfg and scan through for menu entries
 	// creating a MenuEntry from each one
 
@@ -121,12 +131,14 @@ bool MainWindow::generateMenuEntries() {
 		const std::list<std::string>::const_iterator it_entry_vals_end = entry_vals.end();
 		while (it_entry_vals != it_entry_vals_end) {
 			// Search current script for entry
-			std::pair<std::string, std::string> current_script_entry = scriptObject.getReverseRenameMenu(
+			std::pair<std::string, std::string> current_script_entry = scriptObject.getReverseRename(
 					*it_entry_vals);
+#ifdef DEBUG_MAINWINDOW
 			std::cout << "MainWindow::generateMenuEntries: DEBUG: " << "Searched for " << *it_entry_vals << ", found ("
 					<< current_script_entry.first << ", " << current_script_entry.second << ")" << std::endl;
+#endif
 			if (current_script_entry.first == "") {
-				MenuEntry & new_me = this->addMenuEntry(*it_entry_vals, *it_entry_vals, false);
+				MenuEntry & new_me = this->addMenuEntry(*it_entry_vals, "", false);
 				// wasnt in script so mustnt have been activated previously
 				new_me.setEnabled(false);
 			} else {
@@ -158,12 +170,12 @@ void MainWindow::clearAllMenuEntries() {
 
 void MainWindow::deleteMenuEntry(MenuEntry * menu_entry) {
 	if (menu_entry != 0) {
-		scriptObject.clearRenameMenu(menu_entry->getKeyEntryText());
+		scriptObject.clearRename(menu_entry->getKeyEntryText());
 		menuEntries.erase(menu_entry->getKeyEntryText());
 		menuentry_vbox->remove(*(menu_entry));
 		delete (menu_entry);
 		(menu_entry) = 0;
-		scriptObject.clearRenameMenu(menu_entry->getKeyEntryText());
+		scriptObject.clearRename(menu_entry->getKeyEntryText());
 	}
 }
 
@@ -172,7 +184,7 @@ MenuEntry & MainWindow::addMenuEntry(std::string entry1, std::string entry2, boo
 	MenuEntry * me = new MenuEntry(entry1, entry2, activated);
 	menuEntries[entry1] = me;
 	menuentry_vbox->add(*me);
-	scriptObject.setRenameMenu(entry1, entry2);
+	scriptObject.setRename(entry1, entry2);
 	return *me;
 }
 

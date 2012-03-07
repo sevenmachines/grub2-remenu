@@ -13,62 +13,56 @@
 
 namespace remenu {
 
-GrubScriptObject::GrubScriptObject() {
-
+GrubScriptObject::GrubScriptObject(const std::string scriptin) {
+	this->parseScript(scriptin);
 }
 
+void GrubScriptObject::parseScript(const std::string script) {
+	// clear this object
+	this->clear();
+
+	// check script is active and readable
+	if (this->checkFilePermissions(script), R_OK | X_OK) {
+
+		// begin file parse stage
+		std::ifstream ifs;
+		ifs.open(script.c_str());
+		if (ifs.is_open()) {
+
+			std::string line;
+			while (getline(ifs, line)) {
+				rawScript.push_back(line);
+				std::pair<std::string, std::string> entry = this->getRenameEntryFromLine(line);
+				if (entry.first != "") {
+					renames[entry.first] = entry.second;
+				}
+			}
+			ifs.close();
+		} else {
+			std::cout << "GrubScriptObject::generateGrubScript: " << "Error opening file " << script << std::endl;
+		}
+	}
+}
 GrubScriptObject::~GrubScriptObject() {
 }
 
-std::pair<std::string, std::string> GrubScriptObject::getRenameMenu(const std::string obj1) {
-	return this->getRename(obj1, this->menuRenames);
-}
-std::pair<std::string, std::string> GrubScriptObject::getReverseRenameMenu(const std::string obj1) {
-	return this->getReverseRename(obj1, this->menuRenames);
-}
-void GrubScriptObject::setRenameMenu(const std::string obj1, const std::string obj2) {
-	this->setRename(obj1, obj2, this->menuRenames);
-}
-
-bool GrubScriptObject::clearRenameMenu(const std::string obj1) {
-	return this->clearRename(obj1, menuRenames);
-}
-
-std::pair<std::string, std::string> GrubScriptObject::getRenameMisc(const std::string obj1) {
-	return this->getRename(obj1, miscRenames);
-}
-
-std::pair<std::string, std::string> GrubScriptObject::getReverseRenameMisc(const std::string obj1) {
-	return this->getReverseRename(obj1, miscRenames);
-}
-
-void GrubScriptObject::setRenameMisc(const std::string obj1, const std::string obj2) {
-	this->setRename(obj1, obj2, miscRenames);
-}
-
-bool GrubScriptObject::clearRenameMisc(const std::string obj1) {
-	return this->clearRename(obj1, miscRenames);
-}
-
-std::pair<std::string, std::string> GrubScriptObject::getRename(const std::string obj1,
-		std::map<std::string, std::string> & map) {
+std::pair<std::string, std::string> GrubScriptObject::getRename(const std::string obj1) {
 	std::pair<std::string, std::string> found_str("", "");
-	std::map<std::string, std::string>::const_iterator it_found = map.find(obj1);
-	if (it_found != map.end()) {
+	std::map<std::string, std::string>::const_iterator it_found = renames.find(obj1);
+	if (it_found != renames.end()) {
 		found_str.first = it_found->first;
 		found_str.second = it_found->second;
 	}
 	return found_str;
 }
 
-std::pair<std::string, std::string> GrubScriptObject::getReverseRename(const std::string obj1,
-		std::map<std::string, std::string> & map) {
+std::pair<std::string, std::string> GrubScriptObject::getReverseRename(const std::string obj1) {
 	std::pair<std::string, std::string> found_str("", "");
 	bool found = false;
 // forall in map
 	{
-		std::map<std::string, std::string>::const_iterator it_map = map.begin();
-		const std::map<std::string, std::string>::const_iterator it_map_end = map.end();
+		std::map<std::string, std::string>::const_iterator it_map = renames.begin();
+		const std::map<std::string, std::string>::const_iterator it_map_end = renames.end();
 		while ((it_map != it_map_end) && found == false) {
 			if (it_map->second == obj1) {
 				found_str.first = it_map->first;
@@ -81,27 +75,18 @@ std::pair<std::string, std::string> GrubScriptObject::getReverseRename(const std
 	return found_str;
 }
 
-void GrubScriptObject::setRename(const std::string obj1, const std::string obj2,
-		std::map<std::string, std::string> & map) {
-	map[obj1] = obj2;
+void GrubScriptObject::setRename(const std::string obj1, const std::string obj2) {
+	renames[obj1] = obj2;
 }
 
-bool GrubScriptObject::clearRename(const std::string obj1, std::map<std::string, std::string> & map) {
-	std::map<std::string, std::string>::iterator it_found = map.find(obj1);
+bool GrubScriptObject::clearRename(const std::string obj1) {
+	std::map<std::string, std::string>::iterator it_found = renames.find(obj1);
 	bool is_found = false;
-	if (it_found != map.end()) {
-		map.erase(it_found);
+	if (it_found != renames.end()) {
+		renames.erase(it_found);
 		is_found = true;
 	}
 	return is_found;
-}
-
-const std::map<std::string, std::string> & GrubScriptObject::getMenuRenames() {
-	return menuRenames;
-}
-
-const std::map<std::string, std::string> & GrubScriptObject::getMiscRenames() {
-	return miscRenames;
 }
 
 void GrubScriptObject::generateGrubScript(const std::string file_path) {
@@ -112,9 +97,7 @@ void GrubScriptObject::generateGrubScript(const std::string file_path) {
 		// generate script thatll do the job of renaming
 		rawScript.push_back("#!/bin/sh ");
 		rawScript.push_back("echo \"Renaming entries....\" >&2 ");
-		rawScript.push_back(this->getRenameMenuScript());
-		rawScript.push_back("echo \"Renaming miscallaneous....\" >&2 ");
-		rawScript.push_back(this->getRenameMiscScript());
+		rawScript.push_back(this->getRenameScript());
 		// forall in rawScript
 		{
 			std::list<std::string>::const_iterator it_rawScript = rawScript.begin();
@@ -139,19 +122,21 @@ void GrubScriptObject::setFilePermissions(const std::string file, int perms) con
 	}
 }
 
-std::string GrubScriptObject::getRenameMenuScript() const {
-	return this->getRenameScript(menuRenames);
-}
-std::string GrubScriptObject::getRenameMiscScript() const {
-	return this->getRenameScript(miscRenames);
+bool GrubScriptObject::checkFilePermissions(const std::string file, int perms) {
+	int check = access(file.c_str(), perms);
+	bool success = false;
+	if (check == 0) {
+		success = true;
+	}
+	return success;
 }
 
-std::string GrubScriptObject::getRenameScript(const std::map<std::string, std::string> & map) const {
+std::string GrubScriptObject::getRenameScript() const {
 	std::stringstream ss;
 	// forall in map
 	{
-		std::map<std::string, std::string>::const_iterator it_map = map.begin();
-		const std::map<std::string, std::string>::const_iterator it_map_end = map.end();
+		std::map<std::string, std::string>::const_iterator it_map = renames.begin();
+		const std::map<std::string, std::string>::const_iterator it_map_end = renames.end();
 		while (it_map != it_map_end) {
 			ss << "sed -i 's|" << (it_map->first) << "|" << (it_map->second) << "|g' " << GRUB_CFG_TMP_PATH << ";"
 					<< std::endl;
@@ -161,10 +146,46 @@ std::string GrubScriptObject::getRenameScript(const std::map<std::string, std::s
 	return ss.str();
 }
 
-void GrubScriptObject::clear() {
-	menuRenames.clear();
-	miscRenames.clear();
+std::pair<std::string, std::string> GrubScriptObject::getRenameEntryFromLine(const std::string line) {
+	std::pair<std::string, std::string> entry("", "");
+
+	// check for menu entries
+	{
+		size_t found = line.find("sed");
+		if (found != std::string::npos) {
+			size_t sedpost1 = line.find_first_of("|");
+			if (found != std::string::npos) {
+				size_t sedpost2 = line.find_first_of("|", sedpost1 + 1);
+				if (found != std::string::npos) {
+					size_t sedpost3 = line.find_first_of("|", sedpost2+1);
+					if (found != std::string::npos) {
+						//extract the rename
+						std::string key = line.substr(sedpost1 + 1, sedpost2 - sedpost1-1);
+						std::string var = line.substr(sedpost2+1, sedpost2 - sedpost3-1);
+						entry.first = key;
+						entry.second = var;
+					} else {
+						std::cout << "GrubScriptObject::getRenameEntryFromLine: " << "Error parsing script line: "
+								<< line << std::endl;
+					}
+				} else {
+					std::cout << "GrubScriptObject::getRenameEntryFromLine: " << "Error parsing script line: " << line
+							<< std::endl;
+				}
+			} else {
+				std::cout << "GrubScriptObject::getRenameEntryFromLine: " << "Error parsing script line: " << line
+						<< std::endl;
+			}
+		}
+	} //end menu check
+	return entry;
 }
+
+void GrubScriptObject::clear() {
+	renames.clear();
+	rawScript.clear();
+}
+
 
 const std::list<std::string> & GrubScriptObject::getRawScript() const {
 	return rawScript;
