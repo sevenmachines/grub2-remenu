@@ -1,2 +1,1 @@
-	fetch = +refs/heads/*:refs/remotes/github/*
 Grub2 Remenu is a small C++ and bash gtk gui to help with renaming menu entries with grub.d scripts automatically in Debian and derivatives
