@@ -10,7 +10,7 @@
 
 #include <string>
 
-static const std::string DATADIR = "data/";
+static const std::string DATADIR = "/usr/share/grub2-remenu/data/";
 
 static const std::string GRUB_CFG_DIR = "/boot/grub/";
 static const std::string GRUB_CFG_FILE = "grub.cfg";
