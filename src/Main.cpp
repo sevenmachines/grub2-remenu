@@ -7,8 +7,10 @@
 
 #include "MainWindow.h"
 
+#ifndef CUTE
 int main(int argc, char **argv) {
 	remenu::MainWindow main(argc, argv);
 
 	return 0;
 }
+#endif

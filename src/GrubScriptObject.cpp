@@ -186,6 +186,9 @@ void GrubScriptObject::clear() {
 	rawScript.clear();
 }
 
+const std::map<std::string, std::string> GrubScriptObject::getRenames() const{
+	return renames;
+}
 
 const std::list<std::string> & GrubScriptObject::getRawScript() const {
 	return rawScript;
