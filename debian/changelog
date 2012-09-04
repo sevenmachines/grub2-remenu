@@ -1,0 +1,5 @@
+grub2-remenu (0.1-1) unstable; urgency=low
+
+  * Initial release (Closes: #nnnn)  <nnnn is the bug number of your ITP>
+
+ -- SevenMachines <SevenMachines@yahoo.co.uk>  Tue, 04 Sep 2012 13:49:39 +0100
