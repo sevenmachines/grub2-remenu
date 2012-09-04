@@ -1,15 +1,10 @@
-CXXFLAGS =	-O2 -g -Wall -fmessage-length=0
+#~/bin/sh
 
-OBJS =		grub2-remenu.o
-
-LIBS =
-
-TARGET =	grub2-remenu
-
-$(TARGET):	$(OBJS)
-	$(CXX) -o $(TARGET) $(OBJS) $(LIBS)
-
-all:	$(TARGET)
+SRCDIR=Release
+all:
+	cd ${SRCDIR}; make; cd ..
 
 clean:
-	rm -f $(OBJS) $(TARGET)
+	cd ${SRCDIR}; make clean; cd ..
+	
+.PHONY: all clean
